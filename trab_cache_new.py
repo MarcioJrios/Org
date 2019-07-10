@@ -113,7 +113,6 @@ def fill_cache(): #preenche a cache inicialmente com os 8 blocos iniciais da MP
 		cache_lines.append(lista)
 		i = i+1
 
-
 def leitura(acertos_L, falhas_L): # funcao para ler um endereco de memoria
 	endereco = input("Digite o endereço em decimal: \n")
 	if(int(endereco) >127):
