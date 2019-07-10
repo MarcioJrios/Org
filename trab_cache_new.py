@@ -13,7 +13,7 @@ total_L = 0
 total_E = 0
 # Numero do bloco = endereço / K
 # Deslocamento no bloco = endereço % K
-cache = [] # [()] lista de tuplas que guardara qual bloco e qual o deslocamento ha em cada linha (quadro(linha), num. bloco, deslocamento)
+cache = [] # [[]] lista de tuplas que guardara qual bloco e qual o deslocamento ha em cada linha (quadro(linha), num. bloco, deslocamento, LRU)
 cache_lines = [] # [[]] lista que armazena o bloco em cada linha da cache
 
 def bin_to_dec(x): # transforma numero binario para decimal
@@ -34,13 +34,13 @@ def calc_end(x): #calcula o endereco da primeira celula associada ao bloco x
 	return endco
 
 def calc_block(x): #calcula o numero do bloco associado ao endereco x
-	num_block = x / tam_bloco_mp
+	num_block = x / 4
 	return int(num_block)
 
 def gerate_mp(): #preenche a MP com valores aleatorios de 8 bits
 	i = 0
 	while(i < 128):
-		item  = randint(0, 255)
+		item  = randint(0, 127)
 		item = dec_to_bin(item)
 		j = 0
 		size = len(item) - 2 #tam da string item sem o '0b'
@@ -62,16 +62,15 @@ def replace_end(num, size): # elimina o caractere '0b' e preenche a string com a
 	if size == 8:
 		num = num.replace('0b', '')
 	else:
-		aux = tam_cel - size
+		aux = 7 - size
 		j = 0
 		zeros = ''
 		while j<aux:
 			zeros = zeros+'0'
 			j = j+1
 		num = num.replace('0b', zeros)
-	num = num[7:] # pega apenas os 2 ultimos bits que representam o deslocamento
-	num = bin_to_dec(int(num))
-	return int(num)
+	num = num[5:] # pega apenas os 2 ultimos bits que representam o deslocamento
+	return num
 
 def get_block(endco): #busca as 4 celulas de um bloco
 	lista = []
@@ -81,39 +80,35 @@ def get_block(endco): #busca as 4 celulas de um bloco
 		h = h+1
 	return lista
 
-def get_value(valor): # verifica se o valor esta na cache
+def get_value(ender): # verifica se o valor esta na cache
 	i = 0
-	for line in cache_lines:
-		j = 0
-		for b_line in line:
-			if valor == b_line:
-				return [i,j]
-			j = j+1
+	for line in cache:
+		if ender == line[1]:
+			return line[0]
 		i = i+1
 	return 'Not'
 
 def fill_cache(): #preenche a cache inicialmente com os 8 blocos iniciais da MP
 	i = 0
 	while(i < 8):
-		endereco = calc_end(i)
-		num = dec_to_bin(endereco)
+		endereco = calc_end(int(i))
+		num = dec_to_bin(int(i))
 		size = len(num) - 2 #tam da string item sem o '0b'
 		j = 0
-		if size ==  8:
+		if size ==  6:
 			num = num.replace('0b', '')
-			cache.append((i, num, '00', i))
+			cache.append([i, num, '00', int(i)])
 			lista = get_block(endereco)
 			cache_lines.append(lista)
 		else:
-			aux = tam_cel - size - 1#	contador de bits em num sem o deslocamento
+			aux = 7 - size - 2#	contador de bits em num sem o deslocamento
 			j = 0
 			zeros = ''
 			while j<aux:
 				zeros = zeros+'0'
 				j = j+1
 			num = num.replace('0b', zeros)
-			num = num[:5]
-		cache.append((i, num, '00', i))
+		cache.append([i, num, '00', int(i)])
 		lista = get_block(endereco)
 		cache_lines.append(lista)
 		i = i+1
@@ -132,28 +127,32 @@ def leitura(acertos_L, falhas_L): # funcao para ler um endereco de memoria
 	if size == 6:
 		num_block = num_block.replace('0b', '')
 	else:
-		aux = tam_cel - size -2 
+		aux = 7 - size -2
 		j = 0
 		zeros = ''
 		while j<aux:
 			zeros = zeros+'0'
 			j = j+1
 		num_block = num_block.replace('0b', zeros)
+	print('Bloco: ', num_block)
 	i = 0
 	for linha in cache:
 		if num_block == linha[1]: # verifica se o bloco obtido pelo endereco fornecido esta em alguma linha da cache
-			linha = linha[0]
+			line = linha[0]
 			valid = linha[3]
 			j = 0
-			for item in cache:
-				if item[3] < valid:
-					line2 = item[0]
-					b = item[1]
-					desl = item[2]
-					val = item[3]
-					cache[j] = (line2, b, desl, val+1) # incrementa em 1 o valor valid de cada linha da cache
+			for item2 in cache:
+				if int(item2[3]) < valid:	
+					line2 = item2[0]
+					b = item2[1]
+					desl = item2[2]
+					val = item2[3]
+					cache[j] = [line2, b, desl, val+1] # incrementa em 1 o valor valid de cada linha da cache
 					j = j+1
-			cache[i] = (linha, num_block, item[2], 0)
+			print("Bloco na cache!")
+			print("Linha: ")
+			print(cache[i])
+			cache[i] = [line, num_block, linha[2], 0]
 			acertos_L = acertos_L +1
 			binary = int(num_block)
 			dec = bin_to_dec(binary)
@@ -161,18 +160,16 @@ def leitura(acertos_L, falhas_L): # funcao para ler um endereco de memoria
 			size = len(endereco) - 2
 			num = endereco
 			#transforma o endereco em uma string em binario sem o '0b'
-			num = replace_end(num, size)
-			lista = cache_lines(linha[0])
-			print(lista[num])
+			#num = replace_end(num, size)
+			lista = get_block(line)
 			#falta alterar os bits de dirty e valid
 			return acertos_L, falhas_L
 		else:
 			pass
 		i = i+1
-
+	#Caso nao esteja na cache
 	num = dec_to_bin(int(endereco))
 	size = len(num) - 2
-	print(size)
 	falhas_L = falhas_L +1
 	# transforma o endereco em binario sem o '0b'
 	num = replace_end(num, size)
@@ -188,14 +185,15 @@ def leitura(acertos_L, falhas_L): # funcao para ler um endereco de memoria
 				b = item2[1]
 				desl = item2[2]
 				val = item2[3]
-				cache[j] = (line2, b, desl, val+1) # incrementa em 1 o valor valid de cada linha da cache
+				val = val + 1
+				cache[j] = [line2, b, desl, val] # incrementa em 1 o valor valid de cada linha da cache
 				j = j+1
-			
-			cache.append((line, num_block, num, 0)) # adiciona a tupla nova a cache
+			print("Bloco não esta na cache!")
+			print("Linha: ")
+			print(item)
+			cache.append([line, num_block, num, 0]) # adiciona a tupla nova a cache
 			cache_lines[line] = lista # adiciona o novo bloco a sua respectiva linha
 			linha = cache_lines[line]
-			print(num)
-			print(linha[int(num)])
 			return [acertos_L, falhas_L]
 		else:
 			pass
@@ -221,14 +219,14 @@ def escrita(acertos_E, falhas_E): # escreve um dado em um endereço da MP
 	if size == 6:
 		num_block = num_block.replace('0b', '')
 	else:
-		aux = tam_cel - size -2 
+		aux = 7 - size -2 
 		j = 0
 		zeros = ''
 		while j<aux:
 			zeros = zeros+'0'
 			j = j+1
 		num_block = num_block.replace('0b', zeros)
-
+	print('Bloco: ', num_block)
 	j = 0
 	size = len(item) - 2 #tamanho da string item sem o '0b'
 	if size ==  8:
@@ -241,8 +239,8 @@ def escrita(acertos_E, falhas_E): # escreve um dado em um endereço da MP
 			zeros = zeros+'0'
 			j = j+1
 		item = item.replace('0b', zeros)
-	block = item[:6]
-	deslocamento = item[7:]
+	block = item[:5]
+	deslocamento = item[6:]
 	size = len(valor) - 2
 	if size ==  8:
 		valor = valor.replace('0b', '')
@@ -254,69 +252,90 @@ def escrita(acertos_E, falhas_E): # escreve um dado em um endereço da MP
 			zeros = zeros+'0'
 			j = j+1
 		valor = valor.replace('0b', zeros)
-	R = get_value(valor)
+	R = get_value(num_block)
 	if R == 'Not': # O dado que esta sendo inserido não esta na cache
 		mem_p[int(endereco)] = valor
 		i = 0
 		for item in cache:
 			if(item[3] == 7):
 				line = item[0]
-				del cache[line] # remove a linha da cache mais antiga
+				print('Elemento substituido: ', cache[i])
+				cache.pop(i) # remove a linha da cache mais antiga
 				j = 0
 				for item2 in cache:
 					line2 = item2[0]
 					b = item2[1]
 					desl = item2[2]
 					val = item2[3]
-					cache[j] = (line2, b, desl, val+1) # incrementa em 1 o valor valid de cada linha da cache
+					val = val + 1
+					cache[j] = [line2, b, desl, int(val)] # incrementa em 1 o valor valid de cada linha da cache
 					j = j+1
+				print("Bloco não esta na cache!")
+				print("Linha: ")
+				print(item)
 				size = len(num) - 2
 				num = replace_end(num, size)
-				cache.append((line, num_block, num, 0)) # adiciona a tupla nova a cache
+				cache.append([line, num_block, num, 0]) # adiciona a tupla nova a cache
 				lista = get_block(int(endereco))
 				cache_lines[line] = lista # adiciona o novo bloco a sua respectiva linha
 				linha = cache_lines[line]
 				falhas_E = falhas_E + 1
-				print(num)
-				print(linha[int(num)])
 				return [acertos_E, falhas_E]
 			else:
 				pass
 			i=i+1
 	else:
 		lista = get_block(int(endereco))
-		linha = Ŕ[0]
-		desl = R[1]
+		linha = R
+		print(R)
 		cache_lines[linha] = lista
+		size = len(num) - 2
+		num = replace_end(num, size)
 		j = 0
 		valid = 0
 		for item2 in cache:
 			if item2[0] == linha:
 				valid = item2[3]
-
 		for item2 in cache:
 			if item2[3] < valid:
-				line2 = item[0]
-				b = item[1]
-				desl = item[2]
-				val = item[3]
-				cache[j] = (line2, b, desl, val+1) # incrementa em 1 o valor valid de cada linha da cache
+				line2 = item2[0]
+				b = item2[1]
+				desl = item2[2]
+				val = int(item2[3])
+				val = val + 1
+				cache[j] = [line2, b, desl, int(val)] # incrementa em 1 o valor valid de cada linha da cache
 				j = j+1
-		cache[i] = (linha, num_block, desl, 0)
+		print("Bloco na cache!")
+		print("Linha: ")
+		print(cache[R])
 		acertos_E = acertos_E + 1
-		return [acertos_E, falhas_E]
+		i = 0
+		for item in cache:
+			if item[0] == R:
+				cache[i] = [R, num_block, num, 0]
+				return [acertos_E, falhas_E]
+			i = i+1
+		#cache[linha] = [linha[0], num_block, num, 0]
+
+
 
 def estatisticas():
 	total_L = acertos_L + falhas_L
-	porcentagem_acertos_L = (100 / total_L) * acertos_L
+	if(total_L == 0):
+		print("Sem leituras\n")
+	else:
+		print("Leitura:")
+		porcentagem_acertos_L = (100 / total_L) * acertos_L
+		print("Acertos -> ",round(porcentagem_acertos_L,2), "%")
+		print("Falhas  -> ",round(100 - porcentagem_acertos_L,2), "%")
 	total_E = acertos_E + falhas_E
-	porcentagem_acertos_E = (100 / total_E) * acertos_E
-	print("Leitura:")
-	print("Acertos -> ",round(porcentagem_acertos_L,2), "%")
-	print("Falhas  -> ",round(100 - porcentagem_acertos_L,2), "%")
-	print("\nEscrita:")
-	print("Acertos -> ",round(porcentagem_acertos_E,2),"%")
-	print("Falhas  -> ",round(100 - porcentagem_acertos_E,2),"%")
+	if(total_E == 0):
+		print("Sem escritas\n")
+	else:
+		print("\nEscrita:")
+		porcentagem_acertos_E = (100 / total_E) * acertos_E
+		print("Acertos -> ",round(porcentagem_acertos_E,2),"%")
+		print("Falhas  -> ",round(100 - porcentagem_acertos_E,2),"%")
 	input("\nAperte Enter para continuar...")
 
 def sair():
@@ -325,7 +344,22 @@ n = -1
 gerate_mp()
 fill_cache()
 
-while n != 5:
+while n != 0:
+	m = 0
+	print('MEMÓRIA PRINCIPAL\n')
+	for line in mem_p:
+		print(m, ': ', mem_p[m])
+		m = m+1
+	print('MEMÓRIA CACHE\n')
+	for line in cache:
+		print(line)
+		print(line[0])
+		print(line, '\n', cache_lines[line[0]], '\n')
+
+	for line in cache:
+		if(line[3] == 7):
+			print("Linha da cache a ser substituida: ")
+			print(line)
 	print('Escolha uma opção:')
 	print('---------------------------------------------------')
 	print("1 : Leitura de endereço da memoria\n2 : Escrita de valor em um endereço de memória\n3 : Exibir estatísticas de acertos e falhas\n0 : Sair")
@@ -346,6 +380,3 @@ while n != 5:
 		break
 	else:
 		print("Opção inválida")
-print(falhas_L)
-print(cache)
-print(cache_lines)
