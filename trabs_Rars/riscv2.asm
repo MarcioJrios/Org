@@ -3,12 +3,14 @@
 	
 .text
 main:
-	add a3, zero, zero
-	addi a4, zero, 4
-	la a1, vetor
-	lw t0, 0(a1)
+	add a3, zero, zero #contador do indice
+	addi a4, zero, 5 #tamanho do vetor
+	la a0, vetor
+	lw t0, 0(a0)
 	add a5, t0, zero #primeiro menor do vetor
 	jal procura
+	add a0, a6, zero # indice do menor
+	add a1, a5, zero # valor do menor
 	nop
 	ebreak
 	
