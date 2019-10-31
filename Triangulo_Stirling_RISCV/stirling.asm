@@ -1,8 +1,9 @@
-	.data
+.data
 valorn:		.string		"\nDigite o valor de N:\n"
 valork:		.string		"\nDigite o valor de K:\n"
 erron:		.string		"\nValor de N incorreto! Digite novamente:\n"
 errok:		.string		"\nValor de K incorreto! Digite novamente:\n"
+res:		.string		"\nResultado:    "
 
 	.text
 escolhen:
@@ -52,7 +53,7 @@ stirling:
 	j stirling
 	
 n1:
-	blt s1, a3, k1		# verifica se K é menor ou igual a 1
+	beq s1, a1, k1		# verifica se K é igual a 1
 	add s6,	zero, zero	# registrador de retorno
 	j resolve
 
@@ -60,12 +61,19 @@ k1:
 	addi s6, zero, 1	# registrador de retorno
 	j resolve
 	
+if:
+	bne s0, zero, continue
+	bne s0, s3, continue
+	j fim	
+	
 resolve:
 	#codigo que multiplica k pelo retorno e chama a recursao da soma
 	addi sp, sp, 8
 	lw s0, 8(sp)		# carrega o valor de N da recorrência
 	lw s1, 4(sp)		# carrega o valor de K da recorrência
 	lw s3, 16(sp)
+	j if
+continue:
 	beq s0, a2, result	# se N for -1, significa que deve somar o que esta em K com o valor retornado em s6
 	addi a2, zero, -1
 	sw a2, 8(sp)		# salva -1 no lugar de N na pilha para identificar que esta na recursao da soma
@@ -81,12 +89,11 @@ resolve:
 	j stirling		# chama a recursao da soma
 	
 result:
-	add s7, s6, s1
+	add s6, s6, s1		# soma o retorno com o valor salvo da multiplicação de k * ST_2
+	add s7, zero, s6 	# passa o resultado da soma para o registrador de resposta (res)
+	#add s6, s7, zero
 	j resolve
 	
-continue:
-        j fim
-        
 erro1:
 	li  a7, 4               # seta valor de operação para string
         la  a0, erron       	# mensagem de erro no valor de N
@@ -100,4 +107,11 @@ erro2:
         j escolhek
         
 fim:
+	li  a7, 4              # seta valor de operação para string
+        la  a0, res          # mensagem para escolher o valor de n
+        ecall			# imprime string
+        
+        add a0, s7, zero
+        li a7, 1
+        ecall
 	#acaba
