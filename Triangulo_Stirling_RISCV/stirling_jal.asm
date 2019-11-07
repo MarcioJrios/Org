@@ -75,8 +75,9 @@ continue:
 	addi s0, s0, -1
 	sw s5, 4(sp)		# salva o resultado da multiplicação em K
 	sw a1, 16(sp)		# 1 indica que deve-se somar o valor que esta em K com o retorno
+	sw zero, 0(sp)		#indica que a proxima operação sera da recursão da multiplicação (k * ST_2)
 	addi sp, sp, -4
-	sw ra, 0(sp)		# salva o registrador de retorno
+	#sw ra, 0(sp)		# salva o registrador de retorno
 	addi sp, sp, -4
 	sw s0, 0(sp)		# salta o valor de N-1 na pilha
 	addi sp, sp, -4
@@ -105,38 +106,10 @@ k1:
 	addi sp, sp, 16
 	ret
 	
-if:                     # condições de parada
+if:                     
 	bne s1, s9, continue
 	sw ra, 12(sp)
 	j continue	
-	
-resolve:
-	#codigo que multiplica k pelo retorno e chama a recursao da soma
-	addi sp, sp, 8
-	lw s0, 8(sp)		# carrega o valor de N da recorrência
-	lw s1, 4(sp)		# carrega o valor de K da recorrência
-	lw s3, 16(sp)
-	j if
-a:
-	beq s0, a2, result	# se N for -1, significa que deve somar o que esta em K com o valor retornado em s6
-	addi a2, zero, -1
-	sw a2, 8(sp)		# salva -1 no lugar de N na pilha para identificar que esta na recursao da soma
-	mul s5, s6, s1		# multiplica k por ST_2
-	sw s5, 4(sp)		# salva o valor da multiplicação no lugar de K, ja que K não vai mais ser usado
-	addi s1, s1, -1
-	addi s0, s0, -1
-
-	sw s0, 0(sp)		# salva o valor de N-1 na pilha
-	addi sp, sp, -4
-	sw s1, 0(sp)		# salva o valor de K-1 na pilha
-	addi sp, sp, -4
-	j stirling		# chama a recursao da soma
-	
-result:
-	add s6, s6, s1		# soma o retorno com o valor salvo da multiplicação de k * ST_2
-	add s7, zero, s6 	# passa o resultado da soma para o registrador de resposta (res)
-	#add s6, s7, zero
-	j resolve
 	
 erro1:
 	li  a7, 4               # seta valor de operação para string
